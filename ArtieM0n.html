@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ArtieMon Battle</title>
+  <style>
+    body { font-family: Arial; text-align: center; background: #a0e0ff; margin: 0; padding: 10px; }
+    #battlefield { display: flex; justify-content: space-around; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 20px; }
+    img { width: 120px; height: 120px; image-rendering: pixelated; }
+    #log { height: 120px; overflow-y: auto; background: white; border: 1px solid black; padding: 5px; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+    button { margin: 5px; padding: 14px 18px; font-size: 18px; min-width: 80px; touch-action: manipulation; }
+  </style>
+</head>
+<body>
+  <h1>⚡ ArtieMon Battle</h1>
+  <div id="battlefield">
+    <div>
+      <h3>Enemy</h3>
+      <img id="enemySprite">
+      <p>HP: <span id="enemyHP">100</span></p>
+    </div>
+    <div>
+      <h3>You</h3>
+      <img id="playerSprite" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png">
+      <p>HP: <span id="playerHP">100</span></p>
+    </div>
+  <div>
+    <button onclick="attack()">⚔️ Attack</button>
+    <button onclick="heal()">💊 Heal</button>
+    <button onclick="drawMove()">🎨 Draw</button>
+    <button onclick="catchMon()">🎒 Catch</button>
+  </div>
+  <div id="log"></div>
+  
+  <!-- Preload audio files -->
+  <audio id="sfx-attack" src="sounds/attack.mp3" preload="auto"></audio>
+  <audio id="sfx-heal" src="sounds/heal.mp3" preload="auto"></audio>
+  <audio id="sfx-hit" src="sounds/hit.mp3" preload="auto"></audio>
+  <audio id="sfx-catch" src="sounds/catch.mp3" preload="auto"></audio>
+  <audio id="sfx-fail" src="sounds/fail.mp3" preload="auto"></audio>
+  <audio id="sfx-encounter" src="sounds/encounter.mp3" preload="auto"></audio>
+  <audio id="sfx-faint" src="sounds/faint.mp3" preload="auto"></audio>
+  
+  <script>
+    let playerHP = 100;
+    let enemyHP = 100;
+    let enemyId = 25;
+    let audioUnlocked = false;
+
+    // Unlock audio on first user interaction - required for iOS/Android
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      const sounds = ['sfx-attack', 'sfx-heal', 'sfx-hit', 'sfx-catch', 'sfx-fail', 'sfx-encounter', 'sfx-faint'];
+      sounds.forEach(id => {
+        const audio = document.getElementById(id);
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+        }).catch(() => {});
+      });
+      audioUnlocked = true;
+    }
+
+    function playSound(id) {
+      const audio = document.getElementById(id);
+      if (audio) {
+        audio.currentTime = 0; // Rewind so it can play rapidly
+        audio.play().catch(e => console.log("Audio play failed:", e));
+      }
+    }
+
+    function log(text) {
+      document.getElementById("log").innerHTML += text + "<br>";
+      document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight;
+    }
+
+    function update() {
+      if (playerHP < 0) playerHP = 0;
+      if (enemyHP < 0) enemyHP = 0;
+      document.getElementById("playerHP").textContent = playerHP;
+      document.getElementById("enemyHP").textContent = enemyHP;
+      if (playerHP === 0) { log("💀 You fainted!"); playSound('sfx-faint'); }
+      if (enemyHP === 0) { log("Enemy fainted!"); playSound('sfx-faint'); }
+    }
+
+    function loadEnemy() {
+      enemyId = Math.floor(Math.random() * 151) + 1;
+      document.getElementById("enemySprite").src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + enemyId + ".png";
+      enemyHP = 100;
+      log("A wild ArtieMon appeared!");
+      playSound('sfx-encounter');
+      update();
+    }
+
+    function attack() {
+      unlockAudio();
+      if (playerHP === 0 || enemyHP === 0) return;
+      let dmg = Math.floor(Math.random() * 15) + 5;
+      enemyHP -= dmg;
+      log("You attacked for " + dmg);
+      playSound('sfx-attack');
+      enemyTurn();
+      update();
+    }
+
+    function heal() {
+      unlockAudio();
+      if (playerHP === 0 || enemyHP === 0) return;
+      let heal = Math.floor(Math.random() * 10) + 5;
+      playerHP += heal;
+      if (playerHP > 100) playerHP = 100;
+      log("You healed " + heal);
+      playSound('sfx-heal');
+      enemyTurn();
+      update();
+    }
+
+    function drawMove() {
+      unlockAudio();
+      if (playerHP === 0 || enemyHP === 0) return;
+      log("Artie used DRAW!");
+      playSound('sfx-heal'); // reuse heal sound for now
+      enemyTurn();
+    }
+
+    function catchMon() {
+      unlockAudio();
+      if (playerHP === 0 || enemyHP === 0) return;
+      let chance = Math.random();
+      let catchRate = (100 - enemyHP) / 100;
+      if (chance < catchRate) {
+        log("🎉 You caught the ArtieMon!");
+        playSound('sfx-catch');
+        enemyHP = 0;
+        setTimeout(loadEnemy, 1500);
+      } else {
+        log("❌ It broke free!");
+        playSound('sfx-fail');
+        enemyTurn();
+      }
+      update();
+    }
+
+    function enemyTurn() {
+      if (enemyHP <= 0 || playerHP <= 0) return;
+      let dmg = Math.floor(Math.random() * 10) + 3;
+      playerHP -= dmg;
+      log("Enemy hits for " + dmg);
+      playSound('sfx-hit');
+      update();
+    }
+
+    // Start game
+    loadEnemy();
+    
+    // Unlock audio on first tap/click
+    document.body.addEventListener('touchstart', unlockAudio, {once: true});
+    document.body.addEventListener('click', unlockAudio, {once: true});
+  </script>
+</body>
+</html>
